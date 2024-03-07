@@ -1,17 +1,29 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import Logo from '../../olx-logo.png';
 import './Signup.css';
 import {FirebaseContext} from '../../store/FirebaseContext';
 import { useNavigate } from 'react-router-dom';
+import { ScaleLoader } from 'react-spinners';
 
 export default function Signup() {
 
+  const [loading, setlLoading] = useState(false)
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const {firebase} = useContext(FirebaseContext)
   const Navigate = useNavigate();
+
+  useEffect(() => {
+    const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        Navigate('/');
+      }
+    });
+    return () => unsubscribe();
+  }, [firebase, Navigate]);
+
 
   const handleSubmit = (e)=>{
     e.preventDefault()
@@ -34,19 +46,23 @@ export default function Signup() {
       alert('Password should be at least 6 characters long.');
       return;
     }
+    setlLoading(true)
     firebase.auth().createUserWithEmailAndPassword(email, password)
     .then((result)=>{
-      result.user.updateProfile({displayName:username}).then(()=>{
+      result.user.updateProfile({displayName:username})
+      .then(()=>{
         firebase.firestore().collection('users').add({
           id:result.user.uid,
           username:username,
           phone:phone
         }).then(()=>{
+        setlLoading(false)
           Navigate('/login')
         })
       })
     })
     .catch((error)=>{
+      setlLoading(false)
       console.error('Signup error:', error.message);
     })
   }
@@ -55,6 +71,13 @@ export default function Signup() {
     <div>
       <div className="signupParentDiv">
         <img width="200px" height="200px" src={Logo}></img>
+        { loading ? (
+          <ScaleLoader
+          size={150}
+          color={'#36D7B7'}
+          loading={loading}
+        />
+        ) : (
         <form onSubmit={handleSubmit}> 
           <label htmlFor="fname">Username</label>
           <br />
@@ -106,7 +129,8 @@ export default function Signup() {
           <br />
           <br />
           <button>Signup</button>
-        </form>
+        </form> 
+        )}
         <a onClick={()=>Navigate('/Login')}>Login</a>
       </div>
     </div>
